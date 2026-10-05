@@ -1,0 +1,40 @@
+name: Run subs-check
+
+on:
+  schedule:
+    # 每天 UTC 时间 0 点运行一次（可根据需要调整）
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  check-subscriptions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 你的仓库
+        uses: actions/checkout@v4
+
+      - name: 准备配置和订阅文件
+        run: |
+          # 假设你的配置文件和订阅列表放在仓库根目录
+          # 如果使用自定义配置，可以在这里复制或生成
+          # cp config.example.yaml config.yaml
+          # 将你的订阅链接写入 subs.txt（每行一个）
+          echo "${{ secrets.SUBS_LIST }}" > subs.txt
+
+      - name: 运行 subs-check (Docker)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/config:/app/config \
+            -v ${{ github.workspace }}/subs.txt:/app/subs.txt \
+            ghcr.io/beck-8/subs-check:latest \
+            -c /app/config/config.yaml \
+            -f /app/subs.txt \
+            -o /app/output
+        # 注意：请根据 subs-check 最新文档调整参数和环境变量
+        # 例如，可能需要挂载输出目录、设置 API_KEY 等
+
+      - name: 上传检测结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: subs-check-results
+          path: output/ # 请确认 subs-check 的输出目录
